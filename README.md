@@ -131,10 +131,10 @@ We applied this model to **175 real galaxies** from the SPARC survey (Lelli et a
 ![Error Distribution (175 galaxies)](https://github.com/Alpha-Centauri-00/a_extra/blob/main/results/phase6_error_distribution.png)
 
 ---
-![Error vs Galaxy Size (175 galaxies)](results\phase6_error_vs_J_full_sample.png)
+![Error vs Galaxy Size (175 galaxies)](https://github.com/Alpha-Centauri-00/a_extra/blob/main/results/phase6_error_vs_J_full_sample.png)
 
 ---
-![Error vs Galaxy Size (175 galaxies)](results\batch_fitting_csv.png)
+![Error vs Galaxy Size (175 galaxies)](https://github.com/Alpha-Centauri-00/a_extra/blob/main/results/batch_fitting_csv.png)
 
 ---
 
@@ -217,3 +217,4 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDeri
 - Open an issue on GitHub
 
 - Discussions welcome!
+
