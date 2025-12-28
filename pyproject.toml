@@ -1,0 +1,10 @@
+[project]
+name = "a-extra"
+version = "0.1.0"
+description = "Instead of invoking invisible "dark matter," we test a hypothesis: the angular momentum (spin) of a galaxy creates a small extra acceleration that naturally explains why galaxy rotation curves remain flat at large distances."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.0",
+]
