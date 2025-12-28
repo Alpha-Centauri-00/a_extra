@@ -128,7 +128,7 @@ We applied this model to **175 real galaxies** from the SPARC survey (Lelli et a
 | **Worst fit (UGC02455)** | 107.91% error |
 | **Standard deviation** | 14.78% |
 
-![Error Distribution (175 galaxies)](results\phase6_error_distribution.png)
+![Error Distribution (175 galaxies)](https://github.com/Alpha-Centauri-00/a_extra/blob/main/results/phase6_error_distribution.png)
 
 ---
 ![Error vs Galaxy Size (175 galaxies)](results\phase6_error_vs_J_full_sample.png)
@@ -215,4 +215,5 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDeri
 ## Questions or Issues?
 
 - Open an issue on GitHub
+
 - Discussions welcome!
