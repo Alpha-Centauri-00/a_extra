@@ -188,7 +188,7 @@ If you use this code or model in your research:
   title={Spinning-Space Model: Automated Batch Fitting of Galaxy Rotation Curves},
   author={m.kherki},
   year={2025},
-  url={https://github.com/yourusername/spinning-space-model}
+  url={https://github.com/Alpha-Centauri-00/a_extra}
 }
 ```
 
@@ -217,4 +217,5 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-NoDeri
 - Open an issue on GitHub
 
 - Discussions welcome!
+
 
