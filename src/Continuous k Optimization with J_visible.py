@@ -110,75 +110,59 @@ class ContinuousKFitter:
         self.r0_m = 0.5 * kpc_to_m
         self.power = 2.0
     
-    def error_function(self, k: float, J: float, galaxy_data: Dict) -> float:
-        """Calculate mean relative error for a given k."""
-        
+        # ---  error_function ---
+    def error_function(self, log_k: float, J: float, galaxy_data: Dict) -> float:
+        k = 10 ** log_k
         errors = []
-        
+
         for i, r_kpc in enumerate(galaxy_data["radii"]):
             r_m = r_kpc * kpc_to_m
-            
+
             v_vis = RotationCurveModel.estimate_v_vis(
                 galaxy_data["v_gas"][i],
                 galaxy_data["v_disk"][i],
                 galaxy_data["v_bul"][i]
             )
-            
             if v_vis == 0:
                 continue
-            
-            v_pred = RotationCurveModel.v_model(v_vis, J, r_m, k, self.r0_m, self.power)
-            v_obs = galaxy_data["v_obs"][i]
-            
-            if v_obs > 0:
-                error = abs(v_pred - v_obs) / v_obs
-                errors.append(error)
-        
-        if not errors:
-            return 1e10
-        
-        return sum(errors) / len(errors)
-    
-    def fit(self, galaxy_name: str, J_new: float, galaxy_data: Dict) -> Tuple[float, float]:
-        """Fit k parameter using continuous optimization.
-        
-        Returns:
-            (k_optimal, mean_error)
-        """
-        
-        # Try a grid of initial guesses first to find good starting point
-        grid_k = [1e-45, 1e-43, 1e-42, 1e-41, 1e-40, 1e-38, 1e-36]
-        best_k = 1e-42
-        best_error = float('inf')
-        
-        for k_init in grid_k:
-            err = self.error_function(k_init, J_new, galaxy_data)
-            if err < best_error:
-                best_error = err
-                best_k = k_init
-        
-        # Now optimize from best grid point
-        x0 = np.array([best_k])
-        bounds = [(1e-48, 1e-30)]
-        
-        try:
-            result = minimize(
-                self.error_function,
-                x0,
-                args=(J_new, galaxy_data),
-                method='L-BFGS-B',
-                bounds=bounds,
-                options={'ftol': 1e-10, 'maxiter': 5000, 'maxfun': 10000}
+
+            v_pred = RotationCurveModel.v_model(
+                v_vis, J, r_m, k, self.r0_m, self.power
             )
-            
-            k_optimal = result.x[0]
-            error_optimal = result.fun
-        except:
-            # Fallback to best grid point
-            k_optimal = best_k
-            error_optimal = best_error
-        
-        return k_optimal, error_optimal
+            v_obs = galaxy_data["v_obs"][i]
+
+            if v_obs > 0:
+                errors.append(abs(v_pred - v_obs) / v_obs)
+
+        return np.mean(errors) if errors else 1e10
+
+    
+            # --- redo fit ---
+    def fit(self, galaxy_name: str, J_new: float, galaxy_data: Dict):
+
+        grid_k = [1e-45, 1e-43, 1e-42, 1e-41, 1e-40, 1e-38, 1e-36]
+        best_k = min(
+            grid_k,
+            key=lambda k: self.error_function(math.log10(k), J_new, galaxy_data)
+        )
+
+        x0 = np.array([math.log10(best_k)])
+        bounds = [(-55, -25)]
+
+        result = minimize(
+            self.error_function,
+            x0,
+            args=(J_new, galaxy_data),
+            method="L-BFGS-B",
+            bounds=bounds,
+            options={"ftol": 1e-10, "maxiter": 5000}
+        )
+
+        log_k_opt = result.x[0]
+        k_opt = 10 ** log_k_opt
+
+        return k_opt, result.fun
+
 
 
 class J_VisibleLoader:
