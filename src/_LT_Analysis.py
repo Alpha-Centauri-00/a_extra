@@ -190,9 +190,9 @@ class LenseThirringCalculator:
                             'distance_mpc': float(row['distance_mpc']),
                             'r_max_kpc': float(row['r_max_kpc']),
                             'v_max_km_s': float(row['v_max_km_s']),
-                            'J': float(row['J']),
-                            'log10_J': float(row['log10_J']),
-                            'k_fitted': float(row['k_best']),
+                            'J': float(row['J_new']),
+                            'log10_J': float(row['log10_J_new']),
+                            'k_fitted': float(row['k_optimal']),
                             'mean_error': float(row['mean_error']),
                         }
             print(f"  ERROR: Galaxy {galaxy_name} not found in {csv_path}")
@@ -252,7 +252,7 @@ class LenseThirringCalculator:
         
         Returns dict with all LT metrics and comparison to fitted k.
         """
-        print(f"\nAnalyzing {galaxy_name}...")
+        # print(f"\nAnalyzing {galaxy_name}...")
         
         # Load results
         results = self.load_results_csv(results_csv, galaxy_name)
@@ -325,20 +325,20 @@ class LenseThirringCalculator:
             'omega_lt_profile': omega_lt_values,
         }
         
-        print(f"  ✓ ΩLT(r_max) = {omega_lt_max:.3e} rad/s")
-        print(f"  ✓ Cumulative precession = {cumul_precession_max:.1f} rad ({analysis['cumul_precession_rotations']:.1f} rotations)")
-        print(f"  ✓ Velocity boost = {v_boost_max/1000:.4f} km/s ({relative_boost*100:.2f}%)")
-        print(f"  ✓ k_theory = {k_theory:.3e}, k_fitted = {k_fitted:.3e}, ratio = {k_ratio:.2f}")
-        print(f"  ✓ Orbits in 10 Gyr = {n_orbits:.1f}")
+        # print(f"  ✓ ΩLT(r_max) = {omega_lt_max:.3e} rad/s")
+        # print(f"  ✓ Cumulative precession = {cumul_precession_max:.1f} rad ({analysis['cumul_precession_rotations']:.1f} rotations)")
+        # print(f"  ✓ Velocity boost = {v_boost_max/1000:.4f} km/s ({relative_boost*100:.2f}%)")
+        # print(f"  ✓ k_theory = {k_theory:.3e}, k_fitted = {k_fitted:.3e}, ratio = {k_ratio:.2f}")
+        # print(f"  ✓ Orbits in 10 Gyr = {n_orbits:.1f}")
         
         return analysis
     
     def batch_analyze(self, results_csv: str, data_dir: str) -> List[Dict]:
         """Analyze all galaxies in results CSV."""
         
-        print("\n" + "="*100)
+        print("\n" + "="*50)
         print("LENSE-THIRRING FRAME-DRAGGING ANALYSIS: BATCH PROCESSING")
-        print("="*100)
+        print("="*50)
         
         all_results = []
         
@@ -395,11 +395,11 @@ class LenseThirringCalculator:
         if not analysis_list:
             return
         
-        print("\n" + "="*160)
+        print("\n" + "="*50)
         print("SUMMARY: THEORY vs. FITTED k")
-        print("="*160)
+        print("="*50)
         print(f"{'Galaxy':<15} {'ΩLT(r_max)':<14} {'Cumul Δφ':<12} {'δv (km/s)':<12} {'k_theory':<14} {'k_fitted':<14} {'Ratio':<8}")
-        print("-"*160)
+        print("-"*50)
         
         for a in sorted(analysis_list, key=lambda x: x['log10_omega_lt'], reverse=True)[:20]:
             print(f"{a['galaxy_name']:<15} {a['omega_lt_max_rad_s']:.2e} {a['cumul_precession_rad']:>11.1f} {a['v_boost_max_km_s']:>11.4f} {a['k_theory']:>13.2e} {a['k_fitted']:>13.2e} {a['k_ratio_theory_to_fitted']:>7.2f}")
@@ -424,30 +424,30 @@ class LenseThirringCalculator:
         
         top_fits, bottom_fits = self.extract_top_bottom_galaxies(analysis_list, n=5)
         
-        print("\n" + "="*140)
+        print("\n" + "="*50)
         print("TABLE FOR PAPER: Top 5 Best Fits vs Bottom 5 Worst Fits")
-        print("="*140)
+        print("="*50)
         print("\nTOP 5 BEST FITS (Lowest Error %)")
-        print("-"*140)
+        print("-"*50)
         print(f"{'Galaxy':<15} {'Error (%)':<12} {'ΩLT(r_max)':<16} {'k_fitted':<16} {'k_theory':<16} {'Ratio':<12} {'log₁₀(Ratio)':<12}")
-        print("-"*140)
+        print("-"*50)
         for a in top_fits:
             print(f"{a['galaxy_name']:<15} {a['mean_error_pct']:<11.2f} {a['omega_lt_max_rad_s']:<15.2e} {a['k_fitted']:<15.2e} {a['k_theory']:<15.2e} {a['k_ratio_theory_to_fitted']:<11.3e} {a['log10_k_ratio']:<11.2f}")
         
         print("\nBOTTOM 5 WORST FITS (Highest Error %)")
-        print("-"*140)
+        print("-"*50)
         print(f"{'Galaxy':<15} {'Error (%)':<12} {'ΩLT(r_max)':<16} {'k_fitted':<16} {'k_theory':<16} {'Ratio':<12} {'log₁₀(Ratio)':<12}")
-        print("-"*140)
+        print("-"*50)
         for a in bottom_fits:
             print(f"{a['galaxy_name']:<15} {a['mean_error_pct']:<11.2f} {a['omega_lt_max_rad_s']:<15.2e} {a['k_fitted']:<15.2e} {a['k_theory']:<15.2e} {a['k_ratio_theory_to_fitted']:<11.3e} {a['log10_k_ratio']:<11.2f}")
         
-        print("\n" + "="*140)
+        print("\n" + "="*50)
         print("\nINTERPRETATION:")
         print("  - k_theory from LT: 10^-46 to 10^-48 (bare frame-dragging)")
         print("  - k_fitted empirical: 10^-42 (spin-coupling model)")
         print("  - Ratio: 10^4-6 (matching within disk integration + coherence factors)")
         print("  - Pattern holds universally: best fits and worst fits show same scaling")
-        print("="*140)
+        print("="*50)
 
 
 class LTPlotter:
@@ -490,40 +490,90 @@ class LTPlotter:
     
     @staticmethod
     def plot_k_comparison(analysis_list: List[Dict], output_dir: str = "results/plots"):
-        """Plot k_theory vs k_fitted scatter."""
-        
+        """Plot k_theory vs k_fitted scatter - CORRECTED."""
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        
-        k_theory = [a['k_theory'] for a in analysis_list]
-        k_fitted = [a['k_fitted'] for a in analysis_list]
-        J_values = [a['log10_J'] for a in analysis_list]
-        
+
+        k_theory = np.array([a['k_theory'] for a in analysis_list])
+        k_fitted = np.array([a['k_fitted'] for a in analysis_list])
+        J_values = np.array([a['log10_J'] for a in analysis_list])
+
+        # Clip zeros for log plotting
+        k_theory = np.clip(k_theory, 1e-60, None)
+        k_fitted = np.clip(k_fitted, 1e-60, None)
+
         fig, ax = plt.subplots(figsize=(10, 8))
-        
-        scatter = ax.scatter(k_fitted, k_theory, c=J_values, s=100, alpha=0.6, cmap='viridis')
+
+        # X=theory, Y= fitted (CORRECT ORDER)
+        scatter = ax.scatter(k_theory, k_fitted, c=J_values, s=100, alpha=0.6, cmap='viridis')
         
         # 1:1 line
-        k_min = min(min(k_theory), min(k_fitted))
-        k_max = max(max(k_theory), max(k_fitted))
+        k_min, k_max = min(k_theory.min(), k_fitted.min()), max(k_theory.max(), k_fitted.max())
         ax.plot([k_min, k_max], [k_min, k_max], 'r--', linewidth=2, label='1:1 (perfect match)')
-        
+
         ax.set_xscale('log')
         ax.set_yscale('log')
-        ax.set_xlabel('k_fitted (SI)', fontsize=12)
-        ax.set_ylabel('k_theory (SI)', fontsize=12)
+        ax.set_xlabel('k_theory (Lense-Thirring, SI)', fontsize=12)
+        ax.set_ylabel('k_fitted (Rotation curves, SI)', fontsize=12)
         ax.set_title('Theoretical vs. Fitted Coupling Constant', fontsize=14, fontweight='bold')
         ax.grid(True, which='both', alpha=0.3)
-        ax.legend(fontsize=10)
-        
+        ax.legend()
+
         cbar = plt.colorbar(scatter, ax=ax)
-        cbar.set_label('log₁₀(J)', fontsize=11)
-        
+        cbar.set_label('log₁₀(J_vis)', fontsize=11)
+
         plt.tight_layout()
         output_path = os.path.join(output_dir, "k_comparison_all_galaxies.png")
         plt.savefig(output_path, dpi=150)
         print(f"  Plot saved: {output_path}")
         plt.close()
+
+    @staticmethod
+    def plot_k_scatter_log(analysis_list: List[Dict], output_dir: str = "results/plots"):
+        """Plot log₁₀(k_theory) vs log₁₀(k_fitted) - CORRECTED."""
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # Clean data SIMULTANEOUSLY
+        clean_data = []
+        for a in analysis_list:
+            if (a.get('log10_k_theory') is not None and 
+                a.get('log10_k_fitted') is not None and 
+                not math.isnan(a['log10_k_theory']) and 
+                not math.isnan(a['log10_k_fitted'])):
+                clean_data.append(a)
+
+        log_k_theory_clean = np.array([a['log10_k_theory'] for a in clean_data])
+        log_k_fitted_clean = np.array([a['log10_k_fitted'] for a in clean_data])
+        errors_clean = np.array([a['mean_error_pct'] for a in clean_data])
+
+        fig, ax = plt.subplots(figsize=(12, 9))
+
+        # X= log10(k_theory), Y= log10(k_fitted)
+        scatter = ax.scatter(log_k_theory_clean, log_k_fitted_clean, c=errors_clean, 
+                            s=120, alpha=0.7, cmap='RdYlBu_r', edgecolors='black', linewidth=0.5)
+
+        # 1:1 line
+        min_val = min(log_k_theory_clean.min(), log_k_fitted_clean.min())
+        max_val = max(log_k_theory_clean.max(), log_k_fitted_clean.max())
+        ax.plot([min_val-1, max_val+1], [min_val-1, max_val+1], 'r--', linewidth=2.5, 
+                label='1:1 match (theory = fitted)', zorder=5)
+
+        ax.grid(True, which='both', alpha=0.3, linestyle=':')
+        ax.set_xlabel('log₁₀(k_theory) [Lense-Thirring]', fontsize=13, fontweight='bold')
+        ax.set_ylabel('log₁₀(k_fitted) [Empirical]', fontsize=13, fontweight='bold')
+        ax.set_title('Frame-Dragging Theory vs. Rotation Curve Fits\nAll 175 SPARC Galaxies', fontsize=14, fontweight='bold')
+        
+        cbar = plt.colorbar(scatter, ax=ax, label='Fitting Error (%)')
+        cbar.ax.tick_params(labelsize=10)
+        ax.legend(fontsize=11, loc='upper left')
+
+        plt.tight_layout()
+        output_path = os.path.join(output_dir, "k_scatter_log_error_colored.png")
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"  Plot saved: {output_path}")
+        plt.close()
+
     
     @staticmethod
     def plot_k_scatter_log(analysis_list: List[Dict], output_dir: str = "results/plots"):
@@ -602,15 +652,16 @@ class LTPlotter:
 if __name__ == "__main__":
     
     # Paths
-    results_csv = "results/batch_fitting_results.csv"
+    # results_csv = "results/batch_fitting_results.csv"
+    results_csv = "results/batch_fitting_results_continuous_k.csv"
     data_dir = "data/Rotmod_LTG"
     output_csv = "results/lense_thirring_analysis.csv"
     plot_dir = "results/plots"
     
     # Single galaxy test
-    print("\n" + "="*100)
+    print("\n" + "="*50)
     print("PHASE 1: Single Galaxy (F563-V1)")
-    print("="*100)
+    print("="*50)
     
     calc = LenseThirringCalculator()
     single = calc.analyze_galaxy("F563-V1", results_csv, data_dir)
@@ -619,30 +670,30 @@ if __name__ == "__main__":
         LTPlotter.plot_omega_lt_profile("F563-V1", single['J'], single, plot_dir)
     
     # Batch analysis
-    print("\n" + "="*100)
+    print("\n" + "="*50)
     print("PHASE 2: Batch Analysis (All Galaxies)")
-    print("="*100)
+    print("="*50)
     
     all_analyses = calc.batch_analyze(results_csv, data_dir)
     calc.print_summary(all_analyses)
     calc.save_results_csv(all_analyses, output_csv)
     
     # Paper table
-    print("\n" + "="*100)
+    print("\n" + "="*50)
     print("PHASE 3: Paper Table (Top/Bottom 5)")
-    print("="*100)
+    print("="*50)
     
     calc.print_paper_table(all_analyses)
     
     # Plots
-    print("\n" + "="*100)
+    print("\n" + "="*50)
     print("PHASE 4: Generate Comparison Plots")
-    print("="*100)
+    print("="*50)
     
     if len(all_analyses) > 1:
         LTPlotter.plot_k_comparison(all_analyses, plot_dir)
         LTPlotter.plot_k_scatter_log(all_analyses, plot_dir)
     
-    print("\n" + "="*100)
+    print("\n" + "="*50)
     print("✓ COMPLETE: All outputs ready for paper Section 4.1")
-    print("="*100)
+    print("="*50)
