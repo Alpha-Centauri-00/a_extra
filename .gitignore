@@ -2,3 +2,4 @@ old_results/
 Hypothesis.md
 .venv
 paper.md
+__pycache__/
