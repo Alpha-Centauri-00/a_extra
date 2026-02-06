@@ -2,3 +2,6 @@ old_results/
 Hypothesis.md
 .venv
 paper.md
+__pycache__/
+src/tools/__pycache__/
+src/tools/config/__pycache__/

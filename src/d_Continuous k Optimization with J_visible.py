@@ -16,13 +16,7 @@ import csv
 from typing import Dict, List, Tuple, Optional
 import numpy as np
 from scipy.optimize import minimize
-
-# Physical constants
-G = 6.674e-11          # m^3 / (kg s^2)
-kpc_to_m = 3.086e19
-c = 3.0e8
-c_squared = c ** 2
-G_over_c2 = G / c_squared
+from tools.config import constants
 
 
 class RotationCurveLoader:
@@ -84,14 +78,14 @@ class RotationCurveModel:
         return math.sqrt(v_gas_km_s**2 + v_disk_km_s**2 + v_bul_km_s**2)
     
     @staticmethod
-    def a_extra(J: float, r_m: float, k: float, r0_m: float = 0.5 * kpc_to_m, power: float = 2.0) -> float:
+    def a_extra(J: float, r_m: float, k: float, r0_m: float = 0.5 * constants.KPC_TO_M, power: float = 2.0) -> float:
         """Extra acceleration from spin coupling."""
         if r_m + r0_m == 0:
             return 0.0
         return k * J / ((r_m + r0_m) ** power)
     
     @staticmethod
-    def v_model(v_vis_km_s: float, J: float, r_m: float, k: float, r0_m: float = 0.5 * kpc_to_m, power: float = 2.0) -> float:
+    def v_model(v_vis_km_s: float, J: float, r_m: float, k: float, r0_m: float = 0.5 * constants.KPC_TO_M, power: float = 2.0) -> float:
         """Predicted velocity from model."""
         a_extra = RotationCurveModel.a_extra(J, r_m, k, r0_m, power)
         v_vis_m_s = v_vis_km_s * 1000
@@ -107,7 +101,7 @@ class ContinuousKFitter:
     """Fit k parameter using continuous optimization."""
     
     def __init__(self):
-        self.r0_m = 0.5 * kpc_to_m
+        self.r0_m = 0.5 * constants.KPC_TO_M
         self.power = 2.0
     
         # ---  error_function ---
@@ -116,7 +110,7 @@ class ContinuousKFitter:
         errors = []
 
         for i, r_kpc in enumerate(galaxy_data["radii"]):
-            r_m = r_kpc * kpc_to_m
+            r_m = r_kpc * constants.KPC_TO_M
 
             v_vis = RotationCurveModel.estimate_v_vis(
                 galaxy_data["v_gas"][i],

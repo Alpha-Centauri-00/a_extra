@@ -12,23 +12,15 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List, Tuple, Optional
-
-
-# Physical constants (SI units)
-G = 6.674e-11          # m³/(kg⋅s²)
-c = 3.0e8              # m/s
-c_squared = c ** 2
-G_over_c2 = G / c_squared  # ≈ 7.41e-28 m/kg
-kpc_to_m = 3.086e19    # meters per kpc
-Gyr_to_s = 1e9 * 365.25 * 24 * 3600  # seconds per Gyr ≈ 3.154e16
+from tools.config import constants
 
 
 class LenseThirringCalculator:
     """Calculate frame-dragging effects in galaxies."""
     
     def __init__(self):
-        self.G_over_c2 = G_over_c2
-        self.t_hubble = Gyr_to_s * 10  # 10 Gyr in seconds
+        self.G_over_c2 = constants.G_OVER_C2
+        self.t_hubble = constants.GYR_TO_S * 10  # 10 Gyr in seconds
     
     @staticmethod
     def omega_lt_at_radius(J: float, r_m: float) -> float:
@@ -46,7 +38,7 @@ class LenseThirringCalculator:
         """
         if r_m == 0:
             return 0.0
-        return G_over_c2 * J / (r_m ** 3)
+        return constants.G_OVER_C2 * J / (r_m ** 3)
     
     @staticmethod
     def cumulative_precession(omega_lt: float, t_hubble: float) -> float:
@@ -82,7 +74,7 @@ class LenseThirringCalculator:
     
     @staticmethod
     def theoretical_k(J: float, v_max_m_s: float, r_max_m: float, 
-                     r0_m: float = 0.5 * kpc_to_m) -> float:
+                     r0_m: float = 0.5 * constants.KPC_TO_M) -> float:
         """
         Estimate theoretical k from LT precession.
         
@@ -126,7 +118,7 @@ class LenseThirringCalculator:
         if J == 0:
             return 0.0
         
-        numerator = G_over_c2 * v_max_m_s * ((r_max_m + r0_m) ** 2)
+        numerator = constants.G_OVER_C2 * v_max_m_s * ((r_max_m + r0_m) ** 2)
         return numerator / J
     
     @staticmethod
@@ -269,11 +261,11 @@ class LenseThirringCalculator:
         # Convert to SI
         J = results['J']
         v_max_m_s = results['v_max_km_s'] * 1000
-        r_max_m = results['r_max_kpc'] * kpc_to_m
-        r0_m = 0.5 * kpc_to_m
+        r_max_m = results['r_max_kpc'] * constants.KPC_TO_M
+        r0_m = 0.5 * constants.KPC_TO_M
         
         # Calculate ΩLT across disk
-        radii_m = [r * kpc_to_m for r in data['radii_kpc']]
+        radii_m = [r * constants.KPC_TO_M for r in data['radii_kpc']]
         omega_lt_values = [self.omega_lt_at_radius(J, r) for r in radii_m]
         
         # At r_max
@@ -314,7 +306,7 @@ class LenseThirringCalculator:
             'cumul_precession_rotations': cumul_precession_max / (2 * math.pi),
             'v_boost_max_km_s': v_boost_max / 1000,
             'relative_boost_pct': relative_boost * 100,
-            'T_orb_Gyr': T_orb / (Gyr_to_s / 10),
+            'T_orb_Gyr': T_orb / (constants.GYR_TO_S / 10),
             'n_orbits_10Gyr': n_orbits,
             'precession_per_orbit_rad': precession_per_orbit,
             'k_theory': k_theory,
@@ -461,7 +453,7 @@ class LTPlotter:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         
-        radii_kpc = [r / kpc_to_m for r in analysis['radii_m']]
+        radii_kpc = [r / constants.KPC_TO_M for r in analysis['radii_m']]
         omega_lt = analysis['omega_lt_profile']
         r_max_kpc = radii_kpc[-1] if radii_kpc else 1
         

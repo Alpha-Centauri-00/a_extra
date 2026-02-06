@@ -14,19 +14,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List, Tuple, Optional
-
-
-# ============================================================================
-# PHYSICAL CONSTANTS
-# ============================================================================
-
-G = 6.674e-11              # m³/(kg⋅s²)
-c = 3.0e8                  # m/s
-c_squared = c ** 2
-G_over_c2 = G / c_squared
-M_sun = 1.989e30           # kg
-kpc_to_m = 3.086e19        # meters per kpc
-Mpc_to_m = 3.086e22        # meters per Mpc
+from tools.config import constants
 
 
 # ============================================================================
@@ -113,9 +101,9 @@ class ClusterJCalculator:
             sig200_km_s = float(cluster.get('sig200', 0))
             r200_h_Mpc = float(cluster.get('r200', 0))
             
-            M_enc_kg = M200_h_Msun * M_sun / 0.7
+            M_enc_kg = M200_h_Msun *  constants.M_SUN / 0.7
             v_3D_m_s = sig200_km_s * 1000 * math.sqrt(3)
-            r_max_m = r200_h_Mpc * Mpc_to_m / 0.7
+            r_max_m = r200_h_Mpc * constants.MPC_TO_M / 0.7
             
             J = M_enc_kg * v_3D_m_s * r_max_m
             log10_J = math.log10(J) if J > 0 else 0.0
@@ -153,17 +141,17 @@ class ClusterModel:
     @staticmethod
     def a_visible(M200_h_Msun: float, r200_h_Mpc: float) -> float:
         """Newtonian acceleration from cluster mass."""
-        M_kg = M200_h_Msun * M_sun / 0.7
-        r_m = r200_h_Mpc * Mpc_to_m / 0.7
+        M_kg = M200_h_Msun * constants.M_SUN / 0.7
+        r_m = r200_h_Mpc * constants.MPC_TO_M / 0.7
         
         if r_m == 0:
             return 0.0
         
-        return G * M_kg / (r_m ** 2)
+        return constants.G * M_kg / (r_m ** 2)
     
     @staticmethod
     def a_extra(J: float, r200_m: float, k: float, 
-                r0_m: float = 0.15 * Mpc_to_m / 0.7) -> float:
+                r0_m: float = 0.15 * constants.MPC_TO_M / 0.7) -> float:
         """Spin-coupling acceleration."""
         if r200_m + r0_m == 0 or J == 0:
             return 0.0
@@ -187,7 +175,7 @@ class ClusterFitter:
     
     def __init__(self):
         self.k_range = np.logspace(-50, -36, 8)  # FIXED: wider range for clusters
-        self.r0_m = 0.15 * Mpc_to_m / 0.7  # FIXED: 150 kpc cluster core radius
+        self.r0_m = 0.15 * constants.MPC_TO_M / 0.7  # FIXED: 150 kpc cluster core radius
     
     def fit_cluster(self, cluster: Dict) -> Tuple[float, float]:
         """Fit k parameter for single cluster."""
@@ -203,7 +191,7 @@ class ClusterFitter:
         if sig200 <= 0 or M200_h_Msun <= 0 or r200_h_Mpc <= 0:
             return None, None
         
-        r200_m = r200_h_Mpc * Mpc_to_m / 0.7
+        r200_m = r200_h_Mpc * constants.MPC_TO_M / 0.7
         a_vis = ClusterModel.a_visible(M200_h_Msun, r200_h_Mpc)
         
         best_k = None
@@ -373,9 +361,9 @@ class ClusterLTAnalysis:
         """Compute theoretical k from Lense-Thirring for clusters."""
         
         try:
-            r200_m = r200_h_Mpc * Mpc_to_m / 0.7
+            r200_m = r200_h_Mpc * constants.MPC_TO_M / 0.7
             
-            omega_lt = G_over_c2 * J / (r200_m ** 3) if r200_m > 0 else 0
+            omega_lt = constants.G_OVER_C2 * J / (r200_m ** 3) if r200_m > 0 else 0
             k_theory = omega_lt * (r200_m ** 2) / J if J > 0 else 0
             
             log_ratio = math.log10(k_theory) if k_theory > 0 else None
