@@ -342,11 +342,11 @@ class ScalingLawAnalysis:
         ax.grid(True, which='both', alpha=0.3, linestyle=':')
         ax.legend(fontsize=11, loc='best')
         
-        plt.tight_layout()
-        output_path = os.path.join(output_dir, "cluster_k_vs_J_scaling_FIXED.png")
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
-        print(f"\n Scaling plot saved: {output_path}")
-        plt.close()
+        # plt.tight_layout()
+        # output_path = os.path.join(output_dir, "cluster_k_vs_J_scaling_FIXED.png")
+        # plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        # print(f"\n Scaling plot saved: {output_path}")
+        # plt.close()
 
 
 # ============================================================================
