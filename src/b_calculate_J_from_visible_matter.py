@@ -13,10 +13,9 @@ import os
 import math
 import csv
 from typing import Dict, List, Optional, Tuple
+from tools.config import constants
 
-# Physical constants
-G = 6.674e-11        # m^3 / (kg s^2)
-kpc_to_m = 3.086e19
+
 
 
 class RotationCurveLoader:
@@ -80,9 +79,9 @@ def calculate_J_circular(data: Dict) -> Optional[float]:
     try:
         r_kpc = data["radii"][-1]
         v_km_s = data["v_obs"][-1]
-        r_m = r_kpc * kpc_to_m
+        r_m = r_kpc * constants.KPC_TO_M
         v_m_s = v_km_s * 1000.0
-        M_enclosed = (v_m_s ** 2) * r_m / G
+        M_enclosed = (v_m_s ** 2) * r_m / constants.G
         J = M_enclosed * v_m_s * r_m
         return J
     except Exception:
@@ -116,7 +115,7 @@ def calculate_J_visible(data: Dict) -> Tuple[Optional[float], Optional[float], O
         v_vis_vals = []
         
         for i, r_kpc in enumerate(radii):
-            r_m = r_kpc * kpc_to_m
+            r_m = r_kpc * constants.KPC_TO_M
             
             v_gas_i = v_gas[i] if i < len(v_gas) else 0.0
             v_disk_i = v_disk[i] if i < len(v_disk) else 0.0
@@ -131,7 +130,7 @@ def calculate_J_visible(data: Dict) -> Tuple[Optional[float], Optional[float], O
                 M_vals.append(0.0)
                 continue
             
-            M_enc = (v_vis_m_s ** 2) * r_m / G
+            M_enc = (v_vis_m_s ** 2) * r_m / constants.G
             M_vals.append(M_enc)
 
         # Check if we have any visible matter
@@ -152,7 +151,7 @@ def calculate_J_visible(data: Dict) -> Tuple[Optional[float], Optional[float], O
             idx = len(M_vals) - 1
 
         r_disk_kpc = radii[idx]
-        r_disk_m = r_disk_kpc * kpc_to_m
+        r_disk_m = r_disk_kpc * constants.KPC_TO_M
         M_visible = M_vals[idx]
         v_vis_km_s = v_vis_vals[idx]
         v_vis_m_s = v_vis_km_s * 1000.0
