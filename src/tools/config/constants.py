@@ -13,3 +13,5 @@ GYR_TO_S = 1e9 * 365.25 * 24 * 3600
 HUBBLE_H = 0.7         # your assumed h
 R0_KPC = 0.5           # galaxy softening radius
 R0_M = R0_KPC * KPC_TO_M
+
+KM_S_TO_M_S = 1000.0
