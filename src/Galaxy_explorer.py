@@ -3,8 +3,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import os
+import sys
 from tools.config import constants
 
 
@@ -51,14 +52,31 @@ class GalaxyExplorer:
         self.plot_frame = tk.Frame(root)
         self.plot_frame.pack(side="right", fill="both", expand=True)
         
+        # Create matplotlib figure
         self.fig, self.ax = plt.subplots(figsize=(10, 7))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
+        
+        # Add matplotlib toolbar for zoom/pan controls
+        toolbar_frame = tk.Frame(self.plot_frame)
+        toolbar_frame.pack(side="bottom", fill="x")
+        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        self.toolbar.update()
+        
+        # Handle window close event properly
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         # Initial message
         self.ax.text(0.5, 0.5, 'Select a galaxy from the list', 
                     ha='center', va='center', fontsize=14, transform=self.ax.transAxes)
         self.canvas.draw()
+    
+    def on_closing(self):
+        """Properly close the application."""
+        plt.close('all')  # Close all matplotlib figures
+        self.root.quit()  # Stop the mainloop
+        self.root.destroy()  # Destroy the window
+        sys.exit(0)  # Exit the program completely
 
     def load_dat_file(self, galaxy_name):
         """Parses the SPARC .dat file format."""
@@ -137,11 +155,17 @@ class GalaxyExplorer:
             
             # Plot components
             self.ax.scatter(curve['r'], curve['v_obs'], color='black', s=50, 
-                          label='Observed (SPARC)', zorder=3)
+                          label='Observed (SPARC data)', zorder=3)
             self.ax.plot(curve['r'], v_vis_kms, '--', color='blue', linewidth=2,
-                       label='Visible Matter (Newtonian)', alpha=0.7)
+                       label='Visible Matter Only (Newtonian)', alpha=0.7)
             self.ax.plot(curve['r'], v_model_kms, color='red', linewidth=2.5, 
-                       label=f'Spin-Coupling Model', zorder=2)
+                       label=f'With Spin-Coupling', zorder=2)
+            
+            # Auto-scale y-axis to show all data
+            all_velocities = np.concatenate([curve['v_obs'], v_vis_kms, v_model_kms])
+            y_min = max(0, np.min(all_velocities) * 0.9)
+            y_max = np.max(all_velocities) * 1.1
+            self.ax.set_ylim(y_min, y_max)
             
             # Styling
             self.ax.set_title(f"{name} | Error: {err_pct:.2f}% | k = {k:.2e} | J = {J:.2e}", 
@@ -151,8 +175,11 @@ class GalaxyExplorer:
             self.ax.legend(fontsize=10, loc='best')
             self.ax.grid(True, linestyle=':', alpha=0.4)
             
-            # Add info text box
-            info_text = f"log₁₀(J) = {np.log10(J):.2f}\nlog₁₀(k) = {np.log10(k):.2f}"
+            # Add info text box with physics explanation
+            info_text = (f"log₁₀(J) = {np.log10(J):.2f}\n"
+                        f"log₁₀(k) = {np.log10(k):.2f}\n\n"
+                        f"Gap = Missing Mass\n"
+                        f"Red fills the gap!")
             self.ax.text(0.02, 0.98, info_text, transform=self.ax.transAxes,
                        fontsize=9, verticalalignment='top',
                        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
