@@ -1,6 +1,7 @@
 import pandas as pd
+import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -13,190 +14,265 @@ from tools.config import constants
 DATA_FOLDER = r"data\Rotmod_LTG"
 RESULTS_CSV = r"results\batch_fitting_results_continuous_k.csv"
 
+ctk.set_appearance_mode("dark")  # "dark", "light", "system"
+ctk.set_default_color_theme("blue")  # "blue", "dark-blue", "green"
+
+plt.rcParams.update({
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Inter", "Segoe UI", "Roboto", "Arial"],
+    "axes.titleweight": "bold",
+    "axes.labelweight": "bold",
+    "axes.titlesize": 13,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+})
+
+
 class GalaxyExplorer:
     def __init__(self, root, results_csv, data_folder):
         self.root = root
+        root.iconbitmap("data/Untitled.ico")
         self.root.title("SPARC Spin-Coupling Explorer")
+        self.root.geometry("1200x800")
         self.data_folder = data_folder
-        
-        # 1. Load Results Data
+
         try:
             self.df_params = pd.read_csv(results_csv)
-            # Get galaxy names from the CSV
-            self.galaxy_list = sorted(self.df_params['galaxy_name'].unique().tolist())
-            print(f"Loaded {len(self.galaxy_list)} galaxies from {results_csv}")
+            self.galaxy_list = sorted(self.df_params["galaxy_name"].unique().tolist())
         except Exception as e:
-            messagebox.showerror("Error", f"Could not load {results_csv}: {e}")
+            messagebox.showerror("Error", str(e))
             self.root.destroy()
             return
 
-        # 2. UI Layout
-        self.sidebar = tk.Frame(root, width=250, bg="#f0f0f0")
+        self.sidebar = ctk.CTkFrame(root, width=260, fg_color="#242424")
         self.sidebar.pack(side="left", fill="y", padx=10, pady=10)
-        
-        tk.Label(self.sidebar, text="Galaxies", font=("Arial", 12, "bold"), bg="#f0f0f0").pack(pady=5)
-        
-        # Add scrollbar to listbox
-        scrollbar = tk.Scrollbar(self.sidebar)
-        scrollbar.pack(side="right", fill="y")
-        
-        self.listbox = tk.Listbox(self.sidebar, font=("Arial", 10), yscrollcommand=scrollbar.set)
-        self.listbox.pack(fill="both", expand=True)
-        scrollbar.config(command=self.listbox.yview)
-        
+
+        ctk.CTkLabel(
+            self.sidebar,
+            text="Galaxies",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(pady=(10, 5))
+
+        self.list_frame = ctk.CTkScrollableFrame(self.sidebar)
+        self.list_frame.pack(fill="both", expand=True, padx=5, pady=5)
+
         for name in self.galaxy_list:
-            self.listbox.insert(tk.END, name)
-        self.listbox.bind("<<ListboxSelect>>", self.update_plot)
-        
-        # Plot frame
-        self.plot_frame = tk.Frame(root)
-        self.plot_frame.pack(side="right", fill="both", expand=True)
-        
-        # Create matplotlib figure
+            ctk.CTkButton(
+                self.list_frame,
+                text=name,
+                anchor="w",
+                command=lambda n=name: self.update_plot(n)
+            ).pack(fill="x", padx=5, pady=2)
+
+        self.plot_frame = ctk.CTkFrame(root)
+        self.plot_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
         self.fig, self.ax = plt.subplots(figsize=(10, 7))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
-        
-        # Add matplotlib toolbar for zoom/pan controls
-        toolbar_frame = tk.Frame(self.plot_frame)
-        toolbar_frame.pack(side="bottom", fill="x")
-        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+
+        # toolbar_frame = tk.Frame(self.plot_frame)
+        # toolbar_frame.pack(side="bottom", fill="x")
+        # self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        # self.toolbar.update()
+#######################################################
+        self.toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
         self.toolbar.update()
+        self.toolbar.pack_forget()  # hide the default toolbar
+
+        btn_frame = ctk.CTkFrame(self.plot_frame,fg_color="#242424")
+        btn_frame.pack(side="bottom", fill="x")
+
+
+        controls = ctk.CTkFrame(btn_frame, fg_color="transparent")
+        controls.pack(expand=True, pady=6)
+
+        ctk.CTkButton(controls, text="Home",
+                    command=self.toolbar.home).pack(side="left", padx=5)
+        ctk.CTkButton(controls, text="Pan",
+                    command=self.toolbar.pan).pack(side="left", padx=5)
+        ctk.CTkButton(controls, text="Zoom",
+                    command=self.toolbar.zoom).pack(side="left", padx=5)
+        ctk.CTkButton(controls, text="Save",
+                    command=self.toolbar.save_figure).pack(side="left", padx=5)
+
+
         
-        # Handle window close event properly
+
+
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
-        # Initial message
-        self.ax.text(0.5, 0.5, 'Select a galaxy from the list', 
-                    ha='center', va='center', fontsize=14, transform=self.ax.transAxes)
+
+        self.ax.text(
+            0.5, 0.5,
+            "Select a galaxy from the list",
+            ha="center",
+            va="center",
+            fontsize=14,
+            transform=self.ax.transAxes
+        )
+        self.apply_ctk_theme()
         self.canvas.draw()
-    
+
+    def apply_ctk_theme(self):
+        dark = ctk.get_appearance_mode() == "Dark"
+        self.bg = "#242424" if dark else "#F9F9FA"
+        self.fg = "#EAEAEA" if dark else "#1A1A1A"
+        self.grid = "#3A3A3A" if dark else "#D0D0D0"
+        self.box = "#2B2B2B" if dark else "#FFFFFF"
+
+        self.fig.patch.set_facecolor(self.bg)
+        self.ax.set_facecolor(self.bg)
+
+        self.ax.tick_params(colors=self.fg)
+        self.ax.title.set_color(self.fg)
+        self.ax.xaxis.label.set_color(self.fg)
+        self.ax.yaxis.label.set_color(self.fg)
+
+        for spine in self.ax.spines.values():
+            spine.set_color(self.grid)
+
     def on_closing(self):
-        """Properly close the application."""
-        plt.close('all')  # Close all matplotlib figures
-        self.root.quit()  # Stop the mainloop
-        self.root.destroy()  # Destroy the window
-        sys.exit(0)  # Exit the program completely
+        plt.close("all")
+        self.root.quit()
+        self.root.destroy()
+        sys.exit(0)
 
     def load_dat_file(self, galaxy_name):
-        """Parses the SPARC .dat file format."""
         file_path = os.path.join(self.data_folder, f"{galaxy_name}_rotmod.dat")
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Missing file: {file_path}")
-        
-        # Read all lines
-        with open(file_path, 'r') as f:
-            lines = f.readlines()
-        
-        # Parse data (skip comment lines starting with #)
-        data_lines = [line.strip() for line in lines if not line.startswith('#') and line.strip()]
-        
-        # Parse into columns
-        r_list = []
-        v_obs_list = []
-        v_gas_list = []
-        v_disk_list = []
-        v_bul_list = []
-        
-        for line in data_lines:
-            parts = line.split()
-            if len(parts) >= 6:
-                r_list.append(float(parts[0]))
-                v_obs_list.append(float(parts[1]))
-                v_gas_list.append(float(parts[3]))
-                v_disk_list.append(float(parts[4]))
-                v_bul_list.append(float(parts[5]))
-        
+            raise FileNotFoundError(file_path)
+
+        r, v_obs, v_gas, v_disk, v_bul = [], [], [], [], []
+
+        with open(file_path) as f:
+            for line in f:
+                if line.startswith("#") or not line.strip():
+                    continue
+                p = line.split()
+                r.append(float(p[0]))
+                v_obs.append(float(p[1]))
+                v_gas.append(float(p[3]))
+                v_disk.append(float(p[4]))
+                v_bul.append(float(p[5]))
+
         return {
-            'r': np.array(r_list),
-            'v_obs': np.array(v_obs_list),
-            'v_gas': np.array(v_gas_list),
-            'v_disk': np.array(v_disk_list),
-            'v_bul': np.array(v_bul_list)
+            "r": np.array(r),
+            "v_obs": np.array(v_obs),
+            "v_gas": np.array(v_gas),
+            "v_disk": np.array(v_disk),
+            "v_bul": np.array(v_bul),
         }
 
-    def calculate_model(self, r_kpc, v_vis_kms, k_val, J_val):
-        """Calculates the predicted velocity based on the spin-coupling model."""
+    def calculate_model(self, r_kpc, v_vis_kms, k, J):
         r_m = r_kpc * constants.KPC_TO_M
         v_vis_ms = v_vis_kms * constants.KM_S_TO_M_S
-        
-        # Acceleration extra term: a_extra = k * J / (r + r0)^2
-        # v_model^2 = v_vis^2 + r * a_extra
-        v_extra_sq = r_m * k_val * J_val / (r_m + constants.R0_M)**2
-        
+        v_extra_sq = r_m * k * J / (r_m + constants.R0_M) ** 2
         v_pred_ms = np.sqrt(np.maximum(v_vis_ms**2 + v_extra_sq, 0))
         return v_pred_ms / constants.KM_S_TO_M_S
 
-    def update_plot(self, event):
-        selection = self.listbox.curselection()
-        if not selection: 
-            return
-        
-        name = self.listbox.get(selection[0])
-        
+    def update_plot(self, name):
         try:
-            # 1. Get fitted parameters from CSV
-            params = self.df_params[self.df_params['galaxy_name'] == name].iloc[0]
-            k = params['k_optimal']
-            J = params['J_new']
-            err_pct = params['mean_error_pct']
-            
-            # 2. Load raw rotation curve from .dat file
+            params = self.df_params[self.df_params["galaxy_name"] == name].iloc[0]
+            k, J, err = params["k_optimal"], params["J_new"], params["mean_error_pct"]
+
             curve = self.load_dat_file(name)
-            
-            # 3. Calculate visible matter velocity
-            v_vis_kms = np.sqrt(curve['v_gas']**2 + curve['v_disk']**2 + curve['v_bul']**2)
-            
-            # 4. Calculate model prediction
-            v_model_kms = self.calculate_model(curve['r'], v_vis_kms, k, J)
-            
-            # 5. Refresh plot
+            v_vis = np.sqrt(curve["v_gas"]**2 + curve["v_disk"]**2 + curve["v_bul"]**2)
+            v_model = self.calculate_model(curve["r"], v_vis, k, J)
+
             self.ax.clear()
-            
-            # Plot components
-            self.ax.scatter(curve['r'], curve['v_obs'], color='black', s=50, 
-                          label='Observed (SPARC data)', zorder=3)
-            self.ax.plot(curve['r'], v_vis_kms, '--', color='blue', linewidth=2,
-                       label='Visible Matter Only (Newtonian)', alpha=0.7)
-            self.ax.plot(curve['r'], v_model_kms, color='red', linewidth=2.5, 
-                       label=f'With Spin-Coupling', zorder=2)
-            
-            # Auto-scale y-axis to show all data
-            all_velocities = np.concatenate([curve['v_obs'], v_vis_kms, v_model_kms])
-            y_min = max(0, np.min(all_velocities) * 0.9)
-            y_max = np.max(all_velocities) * 1.1
-            self.ax.set_ylim(y_min, y_max)
-            
-            # Styling
-            self.ax.set_title(f"{name} | Error: {err_pct:.2f}% | k = {k:.2e} | J = {J:.2e}", 
-                            fontsize=12, fontweight='bold')
-            self.ax.set_xlabel("Radius (kpc)", fontsize=11, fontweight='bold')
-            self.ax.set_ylabel("Velocity (km/s)", fontsize=11, fontweight='bold')
-            self.ax.legend(fontsize=10, loc='best')
-            self.ax.grid(True, linestyle=':', alpha=0.4)
-            
-            # Add info text box with physics explanation
-            info_text = (f"log₁₀(J) = {np.log10(J):.2f}\n"
-                        f"log₁₀(k) = {np.log10(k):.2f}\n\n"
-                        f"Gap = Missing Mass\n"
-                        f"Red fills the gap!")
-            self.ax.text(0.02, 0.98, info_text, transform=self.ax.transAxes,
-                       fontsize=9, verticalalignment='top',
-                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-            
+            self.apply_ctk_theme()
+
+            self.ax.scatter(
+                curve["r"], curve["v_obs"],
+                s=70, color=self.fg,
+                edgecolors=self.grid, linewidths=0.8,
+                alpha=0.9, label="Observed", zorder=3
+            )
+
+            # self.ax.plot(
+            #     curve["r"], v_vis,
+            #     "--", color="#6BAED6",
+            #     linewidth=2.2, alpha=0.85,
+            #     label="Visible Matter"
+            # )
+
+            # self.ax.plot(
+            #     curve["r"], v_model,
+            #     color="#FB6A4A",
+            #     linewidth=3, alpha=0.95,
+            #     label="Spin-Coupling Model"
+            # )
+
+            self.ax.plot(
+                curve['r'], v_vis,
+                linestyle="--",
+                color="#4C72B0",
+                linewidth=5.5,        # thickness
+                alpha=0.9,            # slightly more opaque
+                label="Visible Matter (Newtonian)",
+                zorder=1              # ensure it's below the red/orange line
+            )
+
+            # Spin-Coupling Model line (red/orange)
+            self.ax.plot(
+                curve['r'], v_model,
+                color="#DD8452",
+                linewidth=3,
+                alpha=0.95,
+                label="Spin-Coupling Model",
+                zorder=2              # drawn above the blue line
+            )
+
+            all_v = np.concatenate([curve["v_obs"], v_vis, v_model])
+            self.ax.set_ylim(max(0, all_v.min()*0.9), all_v.max()*1.1)
+
+            self.ax.set_title(
+                f"{name} | Error: {err:.2f}% | k={k:.2e} | J={J:.2e}"
+            )
+            self.ax.set_xlabel("Radius (kpc)")
+            self.ax.set_ylabel("Velocity (km/s)")
+
+            self.ax.grid(True, linestyle=":", color=self.grid, alpha=0.6)
+
+            self.ax.legend(
+                frameon=True, fancybox=True,
+                facecolor=self.box, edgecolor=self.grid,
+                labelcolor=self.fg, framealpha=0.9
+            )
+
+            # if hasattr(self, "info_box"):
+            #     self.info_box.remove()
+
+            info = (
+                f"log₁₀(J) = {np.log10(J):.2f}\n"
+                f"log₁₀(k) = {np.log10(k):.2f}\n\n"
+                f"Gap = Missing Mass\n"
+                f"Red fills the gap!"
+            )
+
+            self.info_box = self.ax.text(
+                0.02, 0.98, info,
+                transform=self.ax.transAxes,
+                fontsize=9,
+                color=self.fg,  # text color
+                verticalalignment="top",
+                bbox=dict(
+                    boxstyle="round,pad=0.4",
+                    facecolor=self.box,   # match CTk background
+                    edgecolor=self.grid,  # subtle border
+                    alpha=0.95
+                )
+            )
+
+
             self.canvas.draw()
-            
-        except FileNotFoundError as e:
-            messagebox.showerror("File Not Found", str(e))
-        except KeyError as e:
-            messagebox.showerror("Data Error", f"Missing column in CSV: {e}")
+
         except Exception as e:
-            messagebox.showerror("Plot Error", f"Error loading data for {name}:\n{e}")
-            import traceback
-            traceback.print_exc()
+            messagebox.showerror("Error", str(e))
 
 
 if __name__ == "__main__":
-    root = tk.Tk()
+    root = ctk.CTk()
     app = GalaxyExplorer(root, RESULTS_CSV, DATA_FOLDER)
     root.mainloop()
