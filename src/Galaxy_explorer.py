@@ -31,6 +31,10 @@ plt.rcParams.update({
 
 class GalaxyExplorer:
     def __init__(self, root, results_csv, data_folder):
+        
+        self.galaxy_buttons = {}
+        self.active_button = None
+
         self.root = root
         root.iconbitmap("data/Untitled.ico")
         self.root.title("SPARC Spin-Coupling Explorer")
@@ -58,12 +62,16 @@ class GalaxyExplorer:
         self.list_frame.pack(fill="both", expand=True, padx=5, pady=5)
 
         for name in self.galaxy_list:
-            ctk.CTkButton(
+            btn = ctk.CTkButton(
                 self.list_frame,
                 text=name,
                 anchor="w",
-                command=lambda n=name: self.update_plot(n)
-            ).pack(fill="x", padx=5, pady=2)
+                fg_color="transparent",          # default look
+                hover_color="#3A3A3A",
+                command=lambda n=name: self.on_galaxy_click(n)
+            )
+            btn.pack(fill="x", padx=5, pady=2)
+            self.galaxy_buttons[name] = btn
 
         self.plot_frame = ctk.CTkFrame(root)
         self.plot_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
@@ -113,6 +121,21 @@ class GalaxyExplorer:
         )
         self.apply_ctk_theme()
         self.canvas.draw()
+
+
+    def on_galaxy_click(self, name):
+        # reset previously active button
+        if self.active_button is not None:
+            self.active_button.configure(fg_color="transparent")
+
+        # activate new button
+        btn = self.galaxy_buttons[name]
+        btn.configure(fg_color="#1F6AA5")  # highlight color (tweak if you want)
+
+        self.active_button = btn
+
+        # update plot as usual
+        self.update_plot(name)
 
     def apply_ctk_theme(self):
         dark = ctk.get_appearance_mode() == "Dark"
@@ -208,7 +231,7 @@ class GalaxyExplorer:
                 curve['r'], v_vis,
                 linestyle="--",
                 color="#4C72B0",
-                linewidth=5.5,        # thickness
+                linewidth=6.5,        # thickness
                 alpha=0.9,            # slightly more opaque
                 label="Visible Matter (Newtonian)",
                 zorder=1              # ensure it's below the red/orange line
@@ -219,7 +242,7 @@ class GalaxyExplorer:
                 curve['r'], v_model,
                 color="#DD8452",
                 linewidth=3,
-                alpha=0.95,
+                alpha=1.0,
                 label="Spin-Coupling Model",
                 zorder=2              # drawn above the blue line
             )
