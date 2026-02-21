@@ -2,16 +2,16 @@ GLOBAL FIT RESULTS
 ============================================================
 
 Model A: Universal k (beta=0)
-  k0              = 7.731510e-45
-  log10(k0)       = -44.1117
+  k0              = 2.650072e-43
+  log10(k0)       = -42.5767
   beta            = 0.0000
   chi2_reduced    = 157.5809
   Mean  error     = 32.85%
   Median error    = 29.63%
 
 Model B: Power-law k(J) = k0 * J^beta
-  k0              = 7.468402e-45
-  log10(k0)       = -44.1268
+  k0              = 4.533756e-45
+  log10(k0)       = -44.3435
   beta            = -3.0000
   chi2_reduced    = 157.5809
   Mean  error     = 32.85%
