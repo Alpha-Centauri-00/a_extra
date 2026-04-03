@@ -1,5 +1,6 @@
 old_results/
 Hypothesis.md
+.claude/
 .venv
 paper.md
 __pycache__/
