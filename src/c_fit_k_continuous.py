@@ -243,42 +243,51 @@ class GlobalFitter:
     # ------------------------------------------------------------------
     # Internal: total objective over all galaxies
     # ------------------------------------------------------------------
-    def _total_chi2(self, params, J_list, data_list, fix_beta=False):
+    def _total_chi2(self, params, J_list, data_list, fix_beta=False,
+                    r0_m_list=None):
         if fix_beta:
             log_k0 = params[0]
             beta   = 0.0
         else:
             log_k0, beta = params[0], params[1]
 
-        k0    = 10 ** log_k0
         total = 0.0
 
-        for J, data in zip(J_list, data_list):
-            # Avoid J^beta float issues when beta=0
-            k = k0 if (fix_beta or beta == 0.0) else k0 * (J ** beta)
-            if k <= 0 or not math.isfinite(k):
+        for i, (J, data) in enumerate(zip(J_list, data_list)):
+            r0_m = r0_m_list[i] if r0_m_list is not None else self.r0_m
+            # Compute k entirely in log-space to prevent overflow/underflow
+            # when J ~ 10^62 and beta is non-zero.
+            if fix_beta or beta == 0.0:
+                log10_k = log_k0
+            else:
+                log10_J = math.log10(J) if J > 0 else 0.0
+                log10_k = log_k0 + beta * log10_J
+            # log10_k > 0 means k > 1 SI, which is unphysical and causes
+            # float overflow (10^308 limit) when J ~ 10^66 and beta ~ 5.
+            if not math.isfinite(log10_k) or log10_k > 0:
                 total += 1e10
                 continue
-            total += weighted_chi2(k, J, data, self.r0_m)
+            k = 10 ** log10_k
+            total += weighted_chi2(k, J, data, r0_m)
 
         return total / max(len(J_list), 1)
 
     # ------------------------------------------------------------------
     # Helper: warm start from per-galaxy sample
     # ------------------------------------------------------------------
-    def _warm_start_log_k(self, J_list, data_list):
+    def _warm_start_log_k(self, J_list, data_list, r0_m_list=None):
         """
         Fit k on a random sample of 20 galaxies and return the median
         log10(k).  This gives the global optimizer a sensible starting
         point and prevents it from getting stuck at the search boundary.
         """
-        fitter = ContinuousKFitter(r0_m=self.r0_m)
-        n      = min(20, len(J_list))
-        idxs   = np.random.choice(len(J_list), n, replace=False)
+        n    = min(20, len(J_list))
+        idxs = np.random.choice(len(J_list), n, replace=False)
         log_ks = []
         for i in idxs:
             try:
-                k_opt, _, _ = fitter.fit(J_list[i], data_list[i])
+                r0_m  = r0_m_list[i] if r0_m_list is not None else self.r0_m
+                k_opt, _, _ = ContinuousKFitter(r0_m=r0_m).fit(J_list[i], data_list[i])
                 if k_opt > 0:
                     log_ks.append(math.log10(k_opt))
             except Exception:
@@ -289,15 +298,17 @@ class GlobalFitter:
     # Model A: single universal k  (beta = 0)
     # ------------------------------------------------------------------
     def fit_model_A(self, J_list: List[float],
-                    data_list: List[Dict]) -> Dict:
+                    data_list: List[Dict],
+                    r0_m_list: Optional[List[float]] = None) -> Dict:
         """
         Model A: k(J) = k0   (one number for all galaxies).
         Uses a warm start from the median of per-galaxy fits.
+        r0_m_list: per-galaxy softening radii (m). Falls back to self.r0_m if None.
         """
         print("\n  [Model A] Fitting universal k (beta = 0) …")
         print("    Computing warm start from per-galaxy sample …")
 
-        lk0_start = self._warm_start_log_k(J_list, data_list)
+        lk0_start = self._warm_start_log_k(J_list, data_list, r0_m_list)
         print(f"    Warm start: log10(k0) = {lk0_start:.2f}")
 
         # Fine grid around warm start
@@ -306,12 +317,12 @@ class GlobalFitter:
         grid = np.linspace(lo, hi, 25)
         best_lk0 = min(grid,
                        key=lambda lk: self._total_chi2([lk], J_list,
-                                                        data_list, fix_beta=True))
+                                                        data_list, True, r0_m_list))
 
         result = minimize(
             self._total_chi2,
             x0=np.array([best_lk0]),
-            args=(J_list, data_list, True),
+            args=(J_list, data_list, True, r0_m_list),
             method="L-BFGS-B",
             bounds=[self.BOUNDS_LOG_K0],
             options={"ftol": 1e-14, "gtol": 1e-8, "maxiter": 10000},
@@ -322,8 +333,9 @@ class GlobalFitter:
         print(f"    k0 = {k0_A:.4e}  |  chi2_reduced = {chi2_A:.4f}")
 
         per_galaxy_errors = []
-        for J, data in zip(J_list, data_list):
-            mare = mean_abs_relative_error(k0_A, J, data, self.r0_m)
+        for i, (J, data) in enumerate(zip(J_list, data_list)):
+            r0_m = r0_m_list[i] if r0_m_list is not None else self.r0_m
+            mare = mean_abs_relative_error(k0_A, J, data, r0_m)
             per_galaxy_errors.append(mare * 100)
 
         return {
@@ -342,7 +354,8 @@ class GlobalFitter:
     # Model B: power-law k(J) = k0 * J^beta
     # ------------------------------------------------------------------
     def fit_model_B(self, J_list: List[float],
-                    data_list: List[Dict]) -> Dict:
+                    data_list: List[Dict],
+                    r0_m_list: Optional[List[float]] = None) -> Dict:
         """
         Model B: k(J) = k0 * J^beta   (two parameters)
 
@@ -350,23 +363,24 @@ class GlobalFitter:
           1. Warm start: median k from per-galaxy sample, beta = -1.0
           2. 2D grid around warm start to find best neighbourhood
           3. L-BFGS-B refinement
+        r0_m_list: per-galaxy softening radii (m). Falls back to self.r0_m if None.
         """
         print("\n  [Model B] Fitting power-law k(J) = k0 * J^beta …")
         print("    Computing warm start …")
 
-        lk0_start = self._warm_start_log_k(J_list, data_list)
+        lk0_start = self._warm_start_log_k(J_list, data_list, r0_m_list)
         print(f"    Warm start: log10(k0) = {lk0_start:.2f}, beta = -1.0")
 
         # 2D grid around warm start
         lk0_grid  = np.linspace(max(lk0_start - 8, self.BOUNDS_LOG_K0[0]),
                                 min(lk0_start + 8, self.BOUNDS_LOG_K0[1]), 10)
-        beta_grid = np.linspace(-3.0, 0.5, 8)
+        beta_grid = np.linspace(-5.0, 0.5, 12)  # extended: -3.0 caused boundary hits
         best_val  = np.inf
         best_x0   = [lk0_start, -1.0]
 
         for lk0 in lk0_grid:
             for b in beta_grid:
-                val = self._total_chi2([lk0, b], J_list, data_list, fix_beta=False)
+                val = self._total_chi2([lk0, b], J_list, data_list, False, r0_m_list)
                 if val < best_val:
                     best_val = val
                     best_x0  = [lk0, b]
@@ -377,7 +391,7 @@ class GlobalFitter:
         result = minimize(
             self._total_chi2,
             x0=np.array(best_x0),
-            args=(J_list, data_list, False),
+            args=(J_list, data_list, False, r0_m_list),
             method="L-BFGS-B",
             bounds=[self.BOUNDS_LOG_K0, self.BOUNDS_BETA],
             options={"ftol": 1e-14, "gtol": 1e-8, "maxiter": 10000},
@@ -390,11 +404,14 @@ class GlobalFitter:
         print(f"    k0 = {k0_B:.4e}  |  beta = {beta_B:.4f}"
               f"  |  chi2_reduced = {chi2_B:.4f}")
 
-        # Per-galaxy errors
+        # Per-galaxy errors (log-space k to avoid overflow)
         per_galaxy_errors = []
-        for J, data in zip(J_list, data_list):
-            k    = max(k0_B * (J ** beta_B), 1e-60)
-            mare = mean_abs_relative_error(k, J, data, self.r0_m)
+        for i, (J, data) in enumerate(zip(J_list, data_list)):
+            r0_m    = r0_m_list[i] if r0_m_list is not None else self.r0_m
+            log10_J = math.log10(J) if J > 0 else 0.0
+            log10_k = log_k0_B + (beta_B * log10_J if beta_B != 0.0 else 0.0)
+            k       = max(10 ** log10_k, 1e-60)
+            mare    = mean_abs_relative_error(k, J, data, r0_m)
             per_galaxy_errors.append(mare * 100)
 
         return {
@@ -413,7 +430,7 @@ class GlobalFitter:
     # Model comparison (AIC / likelihood ratio)
     # ------------------------------------------------------------------
     @staticmethod
-    def compare_models(result_A: Dict, result_B: Dict, n_galaxies: int) -> Dict:
+    def compare_models(result_A: Dict, result_B: Dict, n_total_datapoints: int) -> Dict:
         """
         Delta-chi2 comparison and AIC.
 
@@ -421,11 +438,12 @@ class GlobalFitter:
         For Gaussian errors, -2ln(L) ∝ N * chi2_reduced, so:
             AIC_A = 2*1 + N * chi2_A
             AIC_B = 2*2 + N * chi2_B
+        where N = total number of data points across all galaxies.
         Delta_AIC = AIC_B - AIC_A
           < 0 → Model B preferred
           > 0 → Model A preferred (simpler)
         """
-        N = n_galaxies
+        N = n_total_datapoints  # total data points, not number of galaxies
         aic_A = 2 * 1 + N * result_A["chi2_reduced"]
         aic_B = 2 * 2 + N * result_B["chi2_reduced"]
         delta_aic = aic_B - aic_A
@@ -448,19 +466,23 @@ class GlobalFitter:
 class J_VisibleLoader:
 
     @staticmethod
-    def load_csv(csv_path: str) -> Dict[str, float]:
-        j_values = {}
+    def load_csv(csv_path: str) -> Dict[str, Dict]:
+        """Return {galaxy_name: {'J': float, 'r_disk_kpc': float}}."""
+        data = {}
         try:
             with open(csv_path, 'r') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     try:
-                        j_values[row['galaxy_name']] = float(row['J_new_visible'])
+                        data[row['galaxy_name']] = {
+                            'J':          float(row['J_new_visible']),
+                            'r_disk_kpc': float(row['r_disk_kpc']),
+                        }
                     except (ValueError, KeyError):
                         continue
         except FileNotFoundError:
             print(f"Warning: J_visible CSV not found at {csv_path}")
-        return j_values
+        return data
 
 
 # =============================================================================
@@ -469,10 +491,12 @@ class J_VisibleLoader:
 
 class BatchProcessor:
 
+    # r0 = R0_ALPHA * r_disk_kpc  (robustness scan optimum: alpha=2.0)
+    R0_ALPHA = 2.0
+
     def __init__(self, j_visible_csv: str):
-        self.fitter     = ContinuousKFitter()
-        self.j_visible  = J_VisibleLoader.load_csv(j_visible_csv)
-        self.results    = []
+        self.j_visible = J_VisibleLoader.load_csv(j_visible_csv)
+        self.results   = []
 
     def find_files(self, directory: str) -> List[Tuple[str, str]]:
         files = []
@@ -496,8 +520,14 @@ class BatchProcessor:
         if galaxy_name not in self.j_visible:
             print("J not found"); return None
 
-        J_new = self.j_visible[galaxy_name]
-        k_opt, chi2, mare = self.fitter.fit(J_new, data)
+        gal_info   = self.j_visible[galaxy_name]
+        J_new      = gal_info['J']
+        r_disk_kpc = gal_info['r_disk_kpc']
+        r0_kpc     = self.R0_ALPHA * r_disk_kpc
+        r0_m       = r0_kpc * constants.KPC_TO_M
+
+        fitter = ContinuousKFitter(r0_m=r0_m)
+        k_opt, chi2, mare = fitter.fit(J_new, data)
 
         result = {
             "galaxy_name":       galaxy_name,
@@ -506,6 +536,7 @@ class BatchProcessor:
             "v_max_km_s":        data["v_obs"][-1],
             "J_new":             J_new,
             "log10_J_new":       math.log10(J_new) if J_new > 0 else 0.0,
+            "r0_kpc":            r0_kpc,
             "k_optimal":         k_opt,
             "log10_k_optimal":   math.log10(k_opt) if k_opt > 0 else 0.0,
             "chi2_reduced":      chi2,
@@ -513,7 +544,7 @@ class BatchProcessor:
             "mean_error_pct":    mare * 100,
         }
         self.results.append(result)
-        print(f"k={k_opt:.3e}  chi2={chi2:.3f}  err={mare*100:.2f}%")
+        print(f"r0={r0_kpc:.2f}kpc  k={k_opt:.3e}  chi2={chi2:.3f}  err={mare*100:.2f}%")
         return result
 
     def process_all(self, directory: str):
@@ -533,7 +564,7 @@ class BatchProcessor:
         with open(output_path, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=[
                 "galaxy_name", "distance_mpc", "r_max_kpc", "v_max_km_s",
-                "J_new", "log10_J_new",
+                "J_new", "log10_J_new", "r0_kpc",
                 "k_optimal", "log10_k_optimal",
                 "chi2_reduced", "mean_error", "mean_error_pct",
             ])
@@ -848,8 +879,9 @@ if __name__ == "__main__":
     if len(batch.results) < 5:
         print("  Not enough galaxies for global fit — skipping.")
     else:
-        J_list     = [r["J_new"] for r in batch.results]
-        names_list = [r["galaxy_name"] for r in batch.results]
+        J_list     = [r["J_new"]        for r in batch.results]
+        names_list = [r["galaxy_name"]  for r in batch.results]
+        r0_m_list  = [r["r0_kpc"] * constants.KPC_TO_M for r in batch.results]
 
         # Re-load data for each galaxy (needed by GlobalFitter + R0Tester)
         data_list = []
@@ -859,9 +891,10 @@ if __name__ == "__main__":
             data_list.append(d)
 
         gfitter    = GlobalFitter()
-        result_A   = gfitter.fit_model_A(J_list, data_list)
-        result_B   = gfitter.fit_model_B(J_list, data_list)
-        comparison = GlobalFitter.compare_models(result_A, result_B, len(J_list))
+        result_A   = gfitter.fit_model_A(J_list, data_list, r0_m_list)
+        result_B   = gfitter.fit_model_B(J_list, data_list, r0_m_list)
+        n_total_pts = sum(len(d["radii"]) for d in data_list if d is not None)
+        comparison = GlobalFitter.compare_models(result_A, result_B, n_total_pts)
 
         print("\n" + "="*80)
         print("MODEL COMPARISON SUMMARY")

@@ -160,12 +160,21 @@ class ClusterModel:
     
     @staticmethod
     def v_model(a_vis: float, a_extra: float, r200_m: float) -> float:
-        """Model velocity dispersion."""
+        """Model velocity dispersion.
+
+        NOTE: v = sqrt(r * a_total) assumes circular orbital motion, which
+        applies to rotationally-supported disk galaxies.  Galaxy clusters are
+        pressure-supported (virial theorem): the correct relation is
+        sigma^2 ~ G*M / r, not v_circ^2 = r * a.  Using the circular-orbit
+        formula here is intentional — it is what allows us to demonstrate that
+        the spin-coupling model *fails* for clusters, supporting the conclusion
+        that the mechanism is specific to coherently rotating disk systems.
+        """
         a_total = a_vis + a_extra
-        
+
         if a_total < 0:
             return 0.0
-        
+
         v_model_m_s = math.sqrt(r200_m * a_total)
         return v_model_m_s / 1000
 

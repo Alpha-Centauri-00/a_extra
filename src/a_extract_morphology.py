@@ -229,17 +229,17 @@ class BatchDensProcessor:
             
             result = {
                 'galaxy_name': galaxy_name,
-                'h_kpc': f"{h:.4f}" if h else "",
-                'B_T': f"{bt:.4f}" if bt else "",
-                'SB_disk_center': f"{sb_disk_center:.2f}" if sb_disk_center else "",
-                'SB_bulge_center': f"{sb_bulge_center:.2f}" if sb_bulge_center else "",
+                'h_kpc': f"{h:.4f}" if h is not None else "",
+                'B_T': f"{bt:.4f}" if bt is not None else "",
+                'SB_disk_center': f"{sb_disk_center:.2f}" if sb_disk_center is not None else "",
+                'SB_bulge_center': f"{sb_bulge_center:.2f}" if sb_bulge_center is not None else "",
                 'h_numeric': h,
                 'bt_numeric': bt,
             }
             
             self.results.append(result)
             
-            print(f"{galaxy_name:<20} {(f'{h:.4f}' if h else ''):<12} {(f'{bt:.4f}' if bt else ''):<10} {(f'{sb_disk_center:.2f}' if sb_disk_center else ''):<14} {(f'{sb_bulge_center:.2f}' if sb_bulge_center else ''):<14} {status:<15}")
+            print(f"{galaxy_name:<20} {(f'{h:.4f}' if h is not None else ''):<12} {(f'{bt:.4f}' if bt is not None else ''):<10} {(f'{sb_disk_center:.2f}' if sb_disk_center is not None else ''):<14} {(f'{sb_bulge_center:.2f}' if sb_bulge_center is not None else ''):<14} {status:<15}")
         
         print("\n" + "="*120)
         print(f"Results: {successful} successful, {failed} failed out of {len(files)} galaxies")

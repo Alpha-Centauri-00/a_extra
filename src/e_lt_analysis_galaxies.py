@@ -306,7 +306,7 @@ class LenseThirringCalculator:
             'cumul_precession_rotations': cumul_precession_max / (2 * math.pi),
             'v_boost_max_km_s': v_boost_max / 1000,
             'relative_boost_pct': relative_boost * 100,
-            'T_orb_Gyr': T_orb / (constants.GYR_TO_S / 10),
+            'T_orb_Gyr': T_orb / constants.GYR_TO_S,
             'n_orbits_10Gyr': n_orbits,
             'precession_per_orbit_rad': precession_per_orbit,
             'k_theory': k_theory,
@@ -520,53 +520,6 @@ class LTPlotter:
         print(f"  Plot saved: {output_path}")
         plt.close()
 
-    @staticmethod
-    def plot_k_scatter_log(analysis_list: List[Dict], output_dir: str = "results/plots"):
-        """Plot log₁₀(k_theory) vs log₁₀(k_fitted) - CORRECTED."""
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        # Clean data SIMULTANEOUSLY
-        clean_data = []
-        for a in analysis_list:
-            if (a.get('log10_k_theory') is not None and 
-                a.get('log10_k_fitted') is not None and 
-                not math.isnan(a['log10_k_theory']) and 
-                not math.isnan(a['log10_k_fitted'])):
-                clean_data.append(a)
-
-        log_k_theory_clean = np.array([a['log10_k_theory'] for a in clean_data])
-        log_k_fitted_clean = np.array([a['log10_k_fitted'] for a in clean_data])
-        errors_clean = np.array([a['mean_error_pct'] for a in clean_data])
-
-        fig, ax = plt.subplots(figsize=(12, 9))
-
-        # X= log10(k_theory), Y= log10(k_fitted)
-        scatter = ax.scatter(log_k_theory_clean, log_k_fitted_clean, c=errors_clean, 
-                            s=120, alpha=0.7, cmap='RdYlBu_r', edgecolors='black', linewidth=0.5)
-
-        # 1:1 line
-        min_val = min(log_k_theory_clean.min(), log_k_fitted_clean.min())
-        max_val = max(log_k_theory_clean.max(), log_k_fitted_clean.max())
-        ax.plot([min_val-1, max_val+1], [min_val-1, max_val+1], 'r--', linewidth=2.5, 
-                label='1:1 match (theory = fitted)', zorder=5)
-
-        ax.grid(True, which='both', alpha=0.3, linestyle=':')
-        ax.set_xlabel('log₁₀(k_theory) [Lense-Thirring]', fontsize=13, fontweight='bold')
-        ax.set_ylabel('log₁₀(k_fitted) [Empirical]', fontsize=13, fontweight='bold')
-        ax.set_title('Frame-Dragging Theory vs. Rotation Curve Fits\nAll 175 SPARC Galaxies', fontsize=14, fontweight='bold')
-        
-        cbar = plt.colorbar(scatter, ax=ax, label='Fitting Error (%)')
-        cbar.ax.tick_params(labelsize=10)
-        ax.legend(fontsize=11, loc='upper left')
-
-        plt.tight_layout()
-        output_path = os.path.join(output_dir, "k_scatter_log_error_colored.png")
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
-        print(f"  Plot saved: {output_path}")
-        plt.close()
-
-    
     @staticmethod
     def plot_k_scatter_log(analysis_list: List[Dict], output_dir: str = "results/plots"):
         """
