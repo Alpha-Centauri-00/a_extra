@@ -234,7 +234,11 @@ class GlobalFitter:
     Minimises the sum of per-galaxy reduced chi-squared values.
     """
 
-    BOUNDS_LOG_K0 = (-80, -20)
+    # Upper bound on log10(k0) raised to +30: when beta < 0 and J ~ 10^65,
+    # the effective k = k0 * J^beta can still be physically reasonable even
+    # with large k0, because J^beta suppresses it. The physical ceiling
+    # log10_k > 0 is enforced inside _total_chi2, not here.
+    BOUNDS_LOG_K0 = (-80, +30)
     BOUNDS_BETA   = (-5.0, 5.0)
 
     def __init__(self, r0_m: float = constants.R0_M):
