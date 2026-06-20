@@ -14,6 +14,7 @@ for %%S in (
     d_merge_k_morphology_correlations.py
     e_lt_analysis_galaxies.py
     f_cluster_spin_coupling.py
+    g_mond_comparison.py
     z_Galaxy_explorer_ml_sensitivity.py
 ) do (
     echo.
